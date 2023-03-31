@@ -1,19 +1,17 @@
 import pyglet
+import random
 from pyglet import shapes
 from pyglet.window import Window
 from pyglet.graphics import Batch
 from pyglet.app import run
-from random import random
 import numpy as np
 
 # Creación de ventana y bash
 ventana = Window(900,700,"Vamos fak",resizable=False)
 batch = Batch()
 
-y_grid = [0]*10
 x_grid = [0]*10
 for i in range(0,10):
-    y_grid[i] = ventana.height*i/10
     x_grid[i] = ventana.width*i/10
 
 class Spaceship:
@@ -47,23 +45,32 @@ class Spaceship:
 
 class Star:
     def __init__(self,x,y,vy) -> None:
-        self.coord = (x,y)
         self.spd = vy
+        self.y = y
+        self.x = x
+        self.body = pyglet.shapes.Star(self.x, self.y, 6, 2, 5, batch=batch)
 
     def update(self):
-        self.coord += (self.cood(0),self.cood(1) + self.spd)
+        self.body.y -= self.spd
+        self.y -= self.spd
+        pass
+
 
 class Sky():
     def __init__(self):
         self.background = shapes.Rectangle(0, 0, ventana.width, ventana.height, color=(5, 5, 30),batch=batch)
+        self.stars = np.array([],dtype=Star)
+        self.star_lines = np.array([],dtype=int)
 
     def gen_stars(self):
         n = random.randint(4,7)
         samp = random.sample(range(0,10),n)
-        
-
+        for i in range(0,n):
+            self.stars = np.append(self.stars,Star(x_grid[samp[i]],ventana.height,5))
+        self.star_lines = np.append(self.star_lines,[n])
 
 background = Sky()
+background.gen_stars()
 
 Ship1 = Spaceship((ventana.width/2,ventana.height/2 + 120))
 Ship2 = Spaceship((ventana.width/2 - 100,ventana.height/2))
@@ -76,6 +83,14 @@ Ship6 = Spaceship((ventana.width/2 - 180,ventana.height/2 - 120))
 def on_draw():
     
     ventana.clear()
+    if (background.stars[0].y%100 == 0):
+        background.gen_stars()
+    if background.stars[0].y < 0:
+        background.stars = background.stars[background.star_lines[0]:-1]
+        background.star_lines = background.star_lines[1:-1]
+    for i in range(0,len(background.stars)):
+        if isinstance(background.stars[i],Star):
+            background.stars[i].update()
     batch.draw()
 
 run()
