@@ -84,5 +84,4 @@ import numpy as np
 grid = np.array([0,0,0],dtype=int)
 grid = np.append(grid,[4,0])
 grid[1] = 6
-for i in range(0,len(grid)):
-    print(grid[i])
+print(grid[1:len(grid)])
