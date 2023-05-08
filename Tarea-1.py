@@ -7,12 +7,22 @@ from pyglet.app import run
 import numpy as np
 
 # Creación de ventana y bash
-ventana = Window(900,700,"Vamos fak",resizable=False)
+ventana = Window(800,600,"Vamos fak",resizable=False)
 
-x_grid = [0]*10
-for i in range(0,10):
-    x_grid[i] = ventana.width*i/10
+# Definicion de grilla para posicion y triggers
+# Las estrellas se generan cuando pasan por algun valor de y dentro de grid_y
+# La posicion en la que se generan esta dada por un valor aleatorio de grid_x e y=ventana.height
+x_grid = np.zeros(40)
+y_grid = np.zeros(40)
+for i in range(0,40):
+    x_grid[i] = ventana.width*i/40
+    y_grid[i] = ventana.height*i/40
 
+# Creacion de clase naves
+# Las naves estan formadas por cuerpo interior, alas y propulsores
+# Cada parte de la nave es un triangulo o serie de triangulos junto con su reflexion, l/r representan left/right
+# Probablemente se puede hacer mucho mas sencillo con un TRIANGLE_FAN de OpenGL, pero no me di el tiempo de aprender
+# a userlo y la tarea especificaba hacerlo con Pyglet (y pyglet.gl se sentia como un vacio legal )
 class Spaceship:
     def __init__(self,
             center=(ventana.width/2,ventana.height/2),
@@ -23,7 +33,7 @@ class Spaceship:
         x0 = center[0]
         y0 = center[1]
 
-        self.batch = Batch()
+        self.batch = Batch() # Para poder dibujar por separado cielo y naves
 
         self.lBody = shapes.Triangle(x0,y0+80,x0,y0-20,x0-20,y0,
                                     color=(131, 85, 160), batch=self.batch)
@@ -45,45 +55,51 @@ class Spaceship:
         self.rLowEngine = shapes.Triangle(x0+32,y0,x0+24,y0-36,x0+8,y0-8,
                                     color=(152, 57, 71), batch=self.batch)
         
-    def update(self):
-        self.batch.draw()
+    def update(self): # Para dibujarlo sobre el cielo, se llama despues de Sky.update()
+        self.batch.draw() 
 
+# Creacion de clase estrellas
+# Se definen las estrellas como clase para evitar tener tantos elementos y metodos dentro de Sky
 class Star:
-    def __init__(self,x,y,vy,batch) -> None:
+    def __init__(self,x,y,vy,batch,color=(255,255,255)) -> None:
         self.batch = batch
         self.spd = vy
         self.y = y
         self.x = x
-        self.body = pyglet.shapes.Star(self.x, self.y, 6, 2, 5, batch=batch)
+        self.color = color
+        self.body = pyglet.shapes.Star(self.x, self.y, 4, 2, 4, color=self.color, batch=self.batch)
 
     def update(self):
         self.body.y -= self.spd
         self.y -= self.spd
-        pass
 
+    def delete(self):
+        self.body.delete()
 
 class Sky():
     def __init__(self):
         self.batch = Batch()
         self.background = shapes.Rectangle(0, 0, ventana.width, ventana.height, color=(5, 5, 30),batch=self.batch)
-        self.stars = np.array([],dtype=Star)
-        self.star_lines = np.array([],dtype=int)
+        self.stars = np.array([Star(0,ventana.height,6,color=(5, 5, 30),batch=self.batch)],dtype=Star)
+        self.star_lines = np.array([1],dtype=int)
 
     def gen_stars(self):
-        n = random.randint(4,7)
-        samp = random.sample(range(0,10),n)
-        for i in range(0,n):
-            self.stars = np.append(self.stars,Star(x_grid[samp[i]],ventana.height,4,self.batch))
-        self.star_lines = np.append(self.star_lines,[n])
+        if (self.stars[0].y in y_grid):
+            n = random.randint(4,8)
+            samp = random.sample(range(0,40),n)
+            for i in range(0,n):
+                self.stars = np.append(self.stars,Star(x_grid[samp[i]],ventana.height,6,self.batch))
+            self.star_lines = np.append(self.star_lines,[n])
 
     def update(self):
         for i in range(0,len(self.stars)):
             self.stars[i].update()
-        if (self.stars[0].y%100 == 0):
-            self.gen_stars()
-        elif self.stars[0].y < 0:
-            self.stars = self.stars[self.star_lines[0]:-1]
+        if self.stars[0].y < 0:
+            for i in range(0,self.star_lines[0]):
+                self.stars[i].delete()
+            self.stars = self.stars[self.star_lines[0]:]
             self.star_lines = self.star_lines[1:len(self.star_lines)]
+        self.gen_stars()
         self.batch.draw()
         
 
