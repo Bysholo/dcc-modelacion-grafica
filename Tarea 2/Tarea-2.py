@@ -2,30 +2,87 @@ import pyglet
 import numpy as np
 import grafica_tarea.basic_shapes as bs
 import grafica_tarea.scene_graph as sg
-import grafica_tarea.easy_shaders as es
+import grafica_tarea.shaders as sh
 import grafica_tarea.performance_monitor as pm
 import grafica_tarea.transformations as tr
 from grafica_tarea.assets_path import getAssetPath
 import random
 from grafica_tarea.gpu_shape import createGPUShape
+from grafica_tarea.obj_handler import read_OBJ2
 from pyglet.window import Window
 from OpenGL.GL import *
 import sys
 import os.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
-ventana = Window(800,600,"Vamos fak",resizable=False)
-
-class Spaceship:
-    def __init__(self,x,y,z,n,vx,vy,vz) -> None:
-        self.position = (x,y,z,n)
-
 WIDTH, HEIGHT = 800, 800
+
+PERSPECTIVE_PROJECTION = 0
+ORTOGRAPHIC_PROJECTION = 1
+
 PROJECTIONS = [
     tr.perspective(60, float(WIDTH)/float(HEIGHT), 0.1, 100),  # PERSPECTIVE_PROJECTION
     tr.ortho(-8, 8, -8, 8, 0.1, 100)  # ORTOGRAPHIC_PROJECTION
 ]
+
+# ASSETS = {
+#     "bricks": getAssetPath("bricks.jpg"),
+#     "baboon": getAssetPath("baboon.png"),
+#     "kirby": getAssetPath("kirby.png"),
+#     "paine": getAssetPath("torres-del-paine-sq.jpg"),
+# }
+
+# WRAP_MODES = [
+#     GL_REPEAT,
+#     GL_MIRRORED_REPEAT,
+#     GL_CLAMP_TO_EDGE,
+#     GL_MIRROR_CLAMP_TO_EDGE
+# ]
+
+# FILTER_MODES = [
+#     GL_NEAREST,
+#     GL_LINEAR
+# ]
+
+ASSETS = {
+    "pochita_obj": getAssetPath("pochita3.obj"),
+    "pochita_tex": getAssetPath("pochita.png"),
+}
+
+
+WIDTH, HEIGHT = 800, 800
+
+PERSPECTIVE_PROJECTION = 0
+ORTOGRAPHIC_PROJECTION = 1
+
+PROJECTIONS = [
+    tr.perspective(60, float(WIDTH)/float(HEIGHT), 0.1, 100),  # PERSPECTIVE_PROJECTION
+    tr.ortho(-8, 8, -8, 8, 0.1, 100)  # ORTOGRAPHIC_PROJECTION
+]
+
+ASSETS = {
+    "pochita_obj": getAssetPath("navesita.obj"),
+    "pochita_tex": getAssetPath("pochita.png"),
+}
+
+
+class Controller(pyglet.window.Window):
+
+    def __init__(self, width, height, title=f"Pochita :3"):
+        super().__init__(width, height, title)
+        self.total_time = 0.0
+        self.pipeline = sh.SimpleTextureModelViewProjectionShaderProgram()
+
+        self.ex_shape = createGPUShape(self.pipeline, read_OBJ2(ASSETS["pochita_obj"]))
+
+        self.tex_params = [GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST]
+        self.current_tex = ASSETS["pochita_tex"]
+
+
+        self.ex_shape.texture = sh.textureSimpleSetup(
+            self.current_tex, *self.tex_params
+        )
+
 
 class Camera:
 
@@ -67,111 +124,89 @@ class Camera:
         self.eye[1] = self.R * np.sin(self.theta) * np.sin(self.phi)
         self.eye[2] = (self.R) * np.cos(self.theta)
 
-def createStaticScene(pipeline):
 
-    roadBaseShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
-    roadBaseShape.texture = es.textureSimpleSetup(
-        getAssetPath("Road_001_basecolor.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
-    glGenerateMipmap(GL_TEXTURE_2D)
+camera = Camera()
+controller = Controller(width=WIDTH, height=HEIGHT)
 
-    sandBaseShape = createGPUShape(pipeline, createTiledFloor(50))
-    sandBaseShape.texture = es.textureSimpleSetup(
-        getAssetPath("Sand 002_COLOR.jpg"), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
-    glGenerateMipmap(GL_TEXTURE_2D)
 
-    arcShape = createGPUShape(pipeline, createTexturedArc(1.5))
-    arcShape.texture = roadBaseShape.texture
-    
-    roadBaseNode = sg.SceneGraphNode('plane')
-    roadBaseNode.transform = tr.rotationX(-np.pi/2)
-    roadBaseNode.childs += [roadBaseShape]
+# Setting up the clear screen color
+glClearColor(0.1, 0.1, 0.1, 1.0)
 
-    arcNode = sg.SceneGraphNode('arc')
-    arcNode.childs += [arcShape]
+glEnable(GL_DEPTH_TEST)
 
-    sandNode = sg.SceneGraphNode('sand')
-    sandNode.transform = tr.translate(0.0,-0.1,0.0)
-    sandNode.childs += [sandBaseShape]
+glUseProgram(controller.pipeline.shaderProgram)
 
-    linearSector = sg.SceneGraphNode('linearSector')
-        
-    for i in range(10):
-        node = sg.SceneGraphNode('road'+str(i)+'_ls')
-        node.transform = tr.translate(0.0,0.0,-1.0*i)
-        node.childs += [roadBaseNode]
-        linearSector.childs += [node]
+# What happens when the user presses these keys
+@controller.event
+def on_key_press(symbol, modifiers):
+    if symbol == pyglet.window.key.P:
+        camera.set_projection(PERSPECTIVE_PROJECTION)
+    if symbol == pyglet.window.key.O:
+        camera.set_projection(ORTOGRAPHIC_PROJECTION)
+    if symbol == pyglet.window.key.A:
+        camera.phi_direction -= 1
+    if symbol == pyglet.window.key.D:
+        camera.phi_direction += 1
+    if symbol == pyglet.window.key.W:
+        camera.theta_direction -= 1
+    if symbol == pyglet.window.key.S:
+        camera.theta_direction += 1
+    if symbol == pyglet.window.key.PLUS:
+        camera.R_direction -= 1
+    if symbol == pyglet.window.key.MINUS:
+        camera.R_direction += 1
 
-    linearSectorLeft = sg.SceneGraphNode('lsLeft')
-    linearSectorLeft.transform = tr.translate(-2.0, 0.0, 5.0)
-    linearSectorLeft.childs += [linearSector]
+    elif symbol == pyglet.window.key.ESCAPE:
+        controller.close()
 
-    linearSectorRight = sg.SceneGraphNode('lsRight')
-    linearSectorRight.transform = tr.translate(2.0, 0.0, 5.0)
-    linearSectorRight.childs += [linearSector]
+# What happens when the user releases these keys
+@controller.event
+def on_key_release(symbol, modifiers):
+    if symbol == pyglet.window.key.A:
+        camera.phi_direction += 1
+    if symbol == pyglet.window.key.D:
+        camera.phi_direction -= 1
+    if symbol == pyglet.window.key.W:
+        camera.theta_direction += 1
+    if symbol == pyglet.window.key.S:
+        camera.theta_direction -= 1
+    if symbol == pyglet.window.key.PLUS:
+        camera.R_direction += 1
+    if symbol == pyglet.window.key.MINUS:
+        camera.R_direction -= 1
 
-    arcTop = sg.SceneGraphNode('arcTop')
-    arcTop.transform = tr.translate(0.0,0.0,-4.5)
-    arcTop.childs += [arcNode]
 
-    arcBottom = sg.SceneGraphNode('arcBottom')
-    arcBottom.transform = tr.matmul([tr.translate(0.0,0.0,5.5), tr.rotationY(np.pi)])
-    arcBottom.childs += [arcNode]
-    
-    scene = sg.SceneGraphNode('system')
-    scene.childs += [linearSectorLeft]
-    scene.childs += [linearSectorRight]
-    scene.childs += [arcTop]
-    scene.childs += [arcBottom]
-    scene.childs += [sandNode]
-    
-    return scene
-
-def createCar(pipeline, r, g, b):
-
-    # Creating shapes on GPU memory
-    blackCube = bs.createColorCube(0,0,0)
-    gpuBlackCube = es.GPUShape().initBuffers()
-    pipeline.setupVAO(gpuBlackCube)
-    gpuBlackCube.fillBuffers(blackCube.vertices, blackCube.indices, GL_STATIC_DRAW)
-
-    chasisCube = bs.createColorCube(r,g,b)
-    gpuChasisCube = es.GPUShape().initBuffers()
-    pipeline.setupVAO(gpuChasisCube)
-    gpuChasisCube.fillBuffers(chasisCube.vertices, chasisCube.indices, GL_STATIC_DRAW)
-    
-    # Cheating a single wheel
-    wheel = sg.SceneGraphNode("wheel")
-    wheel.transform = tr.scale(0.2, 0.8, 0.2)
-    wheel.childs += [gpuBlackCube]
-
-    wheelRotation = sg.SceneGraphNode("wheelRotation")
-    wheelRotation.childs += [wheel]
-
-    # Instanciating 2 wheels, for the front and back parts
-    frontWheel = sg.SceneGraphNode("frontWheel")
-    frontWheel.transform = tr.translate(0.3,0,-0.3)
-    frontWheel.childs += [wheelRotation]
-
-    backWheel = sg.SceneGraphNode("backWheel")
-    backWheel.transform = tr.translate(-0.3,0,-0.3)
-    backWheel.childs += [wheelRotation]
-    
-    # Creating the chasis of the car
-    chasis = sg.SceneGraphNode("chasis")
-    chasis.transform = tr.scale(1,0.7,0.5)
-    chasis.childs += [gpuChasisCube]
-
-    # All pieces together
-    car = sg.SceneGraphNode("car")
-    car.childs += [chasis]
-    car.childs += [frontWheel]
-    car.childs += [backWheel]
-
-    return car
-
-@ventana.event
+@controller.event
 def on_draw():
-    ventana.clear()
-    glClearColor(0.60, 0.85, 0.85, 1.0)
+    controller.clear()
 
-pyglet.app.run()
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    camera.update()
+
+    view = tr.lookAt(
+        camera.eye,
+        camera.at,
+        camera.up
+    )
+
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "projection"), 1, GL_TRUE, camera.projection)
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "view"), 1, GL_TRUE, view)
+
+    controller.pipeline.drawCall(controller.ex_shape)
+
+
+# Each time update is called, on_draw is called again
+# That is why it is better to draw and update each one in a separated function
+# We could also create 2 different gpuQuads and different transform for each
+# one, but this would use more memory
+def update(dt, controller):
+    controller.total_time += dt
+
+
+if __name__ == '__main__':
+    # Try to call this function 60 times per second
+    pyglet.clock.schedule(update, controller)
+    # Set the view
+    pyglet.app.run()
