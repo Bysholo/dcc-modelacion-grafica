@@ -443,46 +443,46 @@ def createFacetedCube():
 
     return Shape(vertices, indices)
 
-def createTextureCube(image_filename):
+def createTextureCube(nx,ny):
 
     # Defining locations and texture coordinates for each vertex of the shape  
     vertices = [
     #   positions         texture coordinates
     # Z+
-        -0.5, -0.5,  0.5, 0, 1,
-         0.5, -0.5,  0.5, 1, 1,
-         0.5,  0.5,  0.5, 1, 0,
+        -0.5, -0.5,  0.5, 0, ny,
+         0.5, -0.5,  0.5, nx, ny,
+         0.5,  0.5,  0.5, nx, 0,
         -0.5,  0.5,  0.5, 0, 0,
 
     # Z-
-        -0.5, -0.5, -0.5, 0, 1,
-         0.5, -0.5, -0.5, 1, 1,
-         0.5,  0.5, -0.5, 1, 0,
+        -0.5, -0.5, -0.5, 0, ny,
+         0.5, -0.5, -0.5, nx, ny,
+         0.5,  0.5, -0.5, nx, 0,
         -0.5,  0.5, -0.5, 0, 0,
         
     # X+
-         0.5, -0.5, -0.5, 0, 1,
-         0.5,  0.5, -0.5, 1, 1,
-         0.5,  0.5,  0.5, 1, 0,
+         0.5, -0.5, -0.5, 0, ny,
+         0.5,  0.5, -0.5, nx, ny,
+         0.5,  0.5,  0.5, nx, 0,
          0.5, -0.5,  0.5, 0, 0
 ,
  
     # X-
-        -0.5, -0.5, -0.5, 0, 1,
-        -0.5,  0.5, -0.5, 1, 1,
-        -0.5,  0.5,  0.5, 1, 0,
+        -0.5, -0.5, -0.5, 0, ny,
+        -0.5,  0.5, -0.5, nx, ny,
+        -0.5,  0.5,  0.5, nx, 0,
         -0.5, -0.5,  0.5, 0, 0,
 
     # Y+
-        -0.5,  0.5, -0.5, 0, 1,
-         0.5,  0.5, -0.5, 1, 1,
-         0.5,  0.5,  0.5, 1, 0,
+        -0.5,  0.5, -0.5, 0, ny,
+         0.5,  0.5, -0.5, nx, ny,
+         0.5,  0.5,  0.5, nx, 0,
         -0.5,  0.5,  0.5, 0, 0,
 
     # Y-
-        -0.5, -0.5, -0.5, 0, 1,
-         0.5, -0.5, -0.5, 1, 1,
-         0.5, -0.5,  0.5, 1, 0,
+        -0.5, -0.5, -0.5, 0, ny,
+         0.5, -0.5, -0.5, nx, ny,
+         0.5, -0.5,  0.5, nx, 0,
         -0.5, -0.5,  0.5, 0, 0
         ]
 
@@ -496,7 +496,7 @@ def createTextureCube(image_filename):
          19,18,17,17,16,19, # Y+
          20,21,22,22,23,20] # Y-
 
-    return Shape(vertices, indices, image_filename)
+    return Shape(vertices, indices)
 
 def createTextureCubeTarea2(nx, ny, x_size):
 

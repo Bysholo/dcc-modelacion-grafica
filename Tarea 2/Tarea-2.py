@@ -8,11 +8,10 @@ import grafica_tarea.scene_graph as sg
 import grafica_tarea.shaders as sh
 import grafica_tarea.performance_monitor as pm
 import grafica_tarea.transformations as tr
+import grafica_tarea.shapes as shapes
 
 from grafica_tarea.assets_path import getAssetPath
 from grafica_tarea.gpu_shape import createGPUShape
-from grafica_tarea.obj_handler import read_OBJ2
-from grafica_tarea.shapes import createTextureCubeTarea2
 from grafica_tarea.camera import Camera
 from pyglet.window import Window
 from OpenGL.GL import *
@@ -52,42 +51,46 @@ PROJECTIONS = [
 ASSETS = {
     "pochita_obj": getAssetPath("navesita.obj"),
     "pochita_tex": getAssetPath("pochita.png"),
+    "fondo_tex": getAssetPath("bricks.jpg")
 }
+TEX_PARAMS = [GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST]
 
 class Controller(Window):
 
     def __init__(self, width, height, title="Pochita :3"):
         super().__init__(width, height, title)
         self.total_time = 0.0
+        self.pipeline = sh.SimpleTextureModelViewProjectionShaderProgram()
 
+
+def crearNavesita(pipeline):
+    naveShape = createGPUShape(pipeline,shapes.createTextureCube(1.0, 1.0))
+    naveShape.texture = sh.textureSimpleSetup(ASSETS["pochita_tex"],*TEX_PARAMS)
+    naveNode = sg.SceneGraphNode("navesita")
+    naveNode.childs += [naveShape]
+    return naveNode
+
+def crearFondo(pipeline):
+    fondoShape = createGPUShape(pipeline, shapes.createTextureCubeTarea2(5.0,1.0,5.0))
+    fondoShape.texture = sh.textureSimpleSetup(ASSETS["fondo_tex"], *TEX_PARAMS)
+    fondoNode = sg.SceneGraphNode("fondo")
+    fondoNode.childs += [fondoShape]
+    return fondoNode
 
 camera = Camera()
 controller = Controller(width=WIDTH, height=HEIGHT)
-mvpPipeline = sh.SimpleTextureModelViewProjectionShaderProgram() # No puedes usar el mismo pipeline para Nave y Bg
+
+root = sg.SceneGraphNode("root")
+fondo = crearFondo(controller.pipeline)
+navesita = crearNavesita(controller.pipeline)
+root.childs += [fondo, navesita]
 
 # Setting up the clear screen color
 glClearColor(0.1, 0.1, 0.1, 1.0)
 
 glEnable(GL_DEPTH_TEST)
 
-glUseProgram(mvpPipeline.shaderProgram)
-
-# Creando fondo
-bgShape = createGPUShape(mvpPipeline, createTextureCubeTarea2(1.0,1.0,1.0))
-tex_params = [GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST]
-tex = getAssetPath("bricks.jpg")
-bgShape.texture = sh.textureSimpleSetup(tex,*tex_params)
-bgNode = sg.SceneGraphNode("background")
-bgNode.childs += [bgShape]
-
-# Creando nave
-navesita = createGPUShape(mvpPipeline,read_OBJ2(getAssetPath("navesita.obj")))
-navesita.texture = sh.textureSimpleSetup(getAssetPath("pochita.png"),*[GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST])
-naveNode = sg.SceneGraphNode("navesita")
-naveNode.childs += [navesita]
-
-rootNode = sg.SceneGraphNode("root")
-rootNode.childs += [bgNode,naveNode]
+glUseProgram(controller.pipeline.shaderProgram)
 
 # What happens when the user presses these keys
 @controller.event
@@ -142,12 +145,12 @@ def on_draw():
         camera.up
     )
 
-    glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
-    glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "projection"), 1, GL_TRUE, camera.projection)
-    glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "view"), 1, GL_TRUE, view)
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "projection"), 1, GL_TRUE, camera.projection)
+    glUniformMatrix4fv(glGetUniformLocation(controller.pipeline.shaderProgram, "view"), 1, GL_TRUE, view)
 
-    sg.drawSceneGraphNode(naveNode,mvpPipeline,"model")
 
+    sg.drawSceneGraphNode(root, controller.pipeline, "model")
 
 
 

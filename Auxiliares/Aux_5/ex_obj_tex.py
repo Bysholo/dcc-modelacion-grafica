@@ -36,7 +36,7 @@ PROJECTIONS = [
 ]
 
 ASSETS = {
-    "pochita_obj": getAssetPath("pochita3.obj"),
+    "pochita_obj": getAssetPath("navesita.obj"),
     "pochita_tex": getAssetPath("pochita.png"),
 }
 
