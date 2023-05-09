@@ -27,23 +27,23 @@ def createTextureQuad(nx, ny):
     return Shape(vertices, indices)
 
 
-def createTextureCube(nx, ny):
+def createTextureCube(nx, ny, x_size):
 
     # Defining locations and texture coordinates for each vertex of the shape
     vertices = [
     #   positions         texture coordinates
 
     # Z-
-        -5, -0.5, -0.5, 0, ny,
-         5, -0.5, -0.5, nx, ny,
-         5,  0.5, -0.5, nx, 0,
-        -5,  0.5, -0.5, 0, 0,
+        -x_size, -0.5, -0.5, 0, ny,
+         x_size, -0.5, -0.5, nx, ny,
+         x_size,  0.5, -0.5, nx, 0,
+        -x_size,  0.5, -0.5, 0, 0,
 
     # Y-
-        -5, -0.5, -0.5, 0, ny,
-         5, -0.5, -0.5, nx, ny,
-         5, -0.5,  0.5, nx, 0,
-        -5, -0.5,  0.5, 0, 0
+        -x_size, -0.5, -0.5, 0, ny,
+         x_size, -0.5, -0.5, nx, ny,
+         x_size, -0.5,  0.5, nx, 0,
+        -x_size, -0.5,  0.5, 0, 0
         ]
     
     # Defining connections among vertices

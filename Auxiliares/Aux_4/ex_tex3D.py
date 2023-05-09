@@ -93,7 +93,7 @@ class Controller(pyglet.window.Window):
 
         self.texture_coords = [10.0, 1.0]  # [s, t] ## CHECK MODS
 
-        self.ex_shape = createGPUShape(self.pipeline, createTextureCube(*self.texture_coords))
+        self.ex_shape = createGPUShape(self.pipeline, createTextureCube(*self.texture_coords, 1))
         
         self.tex_params = [GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST]
         self.current_tex = "bricks"

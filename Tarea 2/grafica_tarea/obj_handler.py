@@ -1,7 +1,7 @@
 import sys
 import os.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from grafica_tarea.basic_shapes import Shape as _Shape
+from grafica_tarea.shapes import Shape as _Shape
 import numpy as np
 
 
