@@ -17,67 +17,103 @@ from OpenGL.GL import *
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+__author__ = "Vicente Valdebenito"
+
 
 # Parametros para los objetos y texturas a importar
 ASSETS = {
-    "pochita_obj": getAssetPath("navesita_new.obj"),
-    "pochita_tex": getAssetPath("pochita.png"),
-    "fondo_tex": getAssetPath("bricks.jpg")
+    "navesita_obj": getAssetPath("navesita_new.obj"),
+    "pipe_obj": getAssetPath("mario_pipe.obj"),
+    "turret_obj": getAssetPath("turret.obj"),
+    "ring_obj": getAssetPath("toroide.obj"),
+    "mario_pipe_tex": getAssetPath("mario-pipe-skin-square.jpg"),
+    "navesita_tex": getAssetPath("pochita.png"),
+    "fondoZ_tex": getAssetPath("starry_night.jpg"),
+    "fondoY_tex": getAssetPath("mossy_cobblestone.jpg"),
+    "blue_tex": getAssetPath("plain_light_blue.jpg")
 }
 TEX_PARAMS = [GL_REPEAT, GL_REPEAT, GL_NEAREST, GL_NEAREST]
+
 
 # Funcion para crear Shape de la nave, retornando un SceneGraphNode que la contiene
 # Se incluyen además los nodos nave_rot y nave_move para tener estas transformaciones separadas
 # de buena manera
 def crearNavesita(pipeline):
-    naveShape = createGPUShape(pipeline, oh.read_OBJ2(ASSETS["pochita_obj"]))
-    naveShape.texture = sh.textureSimpleSetup(ASSETS["pochita_tex"],*TEX_PARAMS)
+    naveShape = createGPUShape(pipeline, oh.read_OBJ2(ASSETS["navesita_obj"]))
+    naveShape.texture = sh.textureSimpleSetup(ASSETS["navesita_tex"],*TEX_PARAMS)
+
     naveShapeNode = sg.SceneGraphNode("nave_shape")
-    naveShapeNode.transform = tr.matmul([tr.rotationZ(-np.pi/2),tr.uniformScale(0.1)])
     naveShapeNode.childs += [naveShape]
-    naveRotNode = sg.SceneGraphNode("nave_rot")
-    naveRotNode.childs += [naveShapeNode]
+
+    naveScaleNode = sg.SceneGraphNode("nave_scale")
+    naveScaleNode.transform = tr.matmul([tr.rotationZ(-np.pi/2),tr.uniformScale(0.2)])
+    naveScaleNode.childs += [naveShapeNode]
+
     naveMoveNode = sg.SceneGraphNode("nave_move")
-    naveMoveNode.childs += [naveRotNode]
+    naveMoveNode.childs += [naveScaleNode]
+
     naveNode = sg.SceneGraphNode("nave")
     naveNode.childs += [naveMoveNode]
+
+    
+    for i in range(0,3):
+        new_nave_place = sg.SceneGraphNode("nave_place_"+str(i))
+        new_nave = sg.SceneGraphNode("nave_shape_"+str(i))
+        new_nave.childs += [naveShape]
+        new_nave_place.childs += [new_nave]
+        naveScaleNode.childs += [new_nave_place]
+    naveScaleNode.childs[1].transform = tr.translate(0,-4,-4)
+    naveScaleNode.childs[2].transform = tr.translate(0,-4, 4)
+    naveScaleNode.childs[3].transform = tr.translate(0,-8, 0)
     return naveNode
 
 # Funcion para crear la figura que hará de fondo, retornando un SceneGraphNode que la contiene
 # La Shape a utilizar es una version modificada de TextureCube, a la que se le borraron
 # cuatro caras y se le agregaron las normales para poder usar el shader adecuado
 def crearFondo(pipeline):
-    fondoShape = createGPUShape(pipeline, shapes.createTextureCubeTarea2Normals(5.0,1.0,5.0))
-    fondoShape.texture = sh.textureSimpleSetup(ASSETS["fondo_tex"], *TEX_PARAMS)
+    fondoYShape = createGPUShape(pipeline, shapes.createTextureYQuad(60, 5, 120, 10))
+    fondoYShape.texture = sh.textureSimpleSetup(ASSETS["fondoY_tex"], *TEX_PARAMS)
+    fondoZShape = createGPUShape(pipeline, shapes.createTextureZQuad(60, 5, 120, 10))
+    fondoZShape.texture = sh.textureSimpleSetup(ASSETS["fondoZ_tex"], *TEX_PARAMS)
+
+    fondoYNode = sg.SceneGraphNode("fondo_y")
+    fondoYNode.childs += [fondoYShape]
+    fondoZNode = sg.SceneGraphNode("fondo_z")
+    fondoZNode.childs += [fondoZShape]
+    
     fondoNode = sg.SceneGraphNode("fondo")
-    fondoNode.childs += [fondoShape]
-    fondoNode.transform = tr.translate(0,0,0.5)
+    fondoNode.childs += [fondoYNode,fondoZNode]
+    fondoNode.transform = tr.translate(-5,0,-2)
     return fondoNode
 
 # Se define una clase Navesita para poder guardar los datos de posicion y rotacion.
-# 
 class Navesita:
     def __init__(self, pipeline):                   # Se entrega un pipeline en el que dibujar el nodo
         self.pos = [0,0,0]
-        self.yRot = 0                               # Grado rotacion Y
+        self.xRot = 0                               # Grado rotacion Y
         self.zRot = 0                               # Grado rotacion Z
         self.spin = 0                               # 0 si no se mueve, 1 si se mueve
         self.move = 0                               # 0 si no esta rotando, 1 si esta rotando
         self.rot_speed = 0.1*np.pi/2                # Velocidad para rotar en Y
-        self.move_speed = 0.1                       # Velocidad para desplazarse en X
+        self.move_speed = 0.15                      # Velocidad para desplazarse en X
         self.node = crearNavesita(pipeline)         # Nodo que se agrega al grafo de escena
     
     def update(self):
-        self.pos[0] +=  self.move * self.move_speed * np.cos(self.yRot) * np.cos(self.zRot)
+        self.pos[0] +=  self.move * self.move_speed * np.cos(self.xRot) * np.cos(self.zRot)
         self.pos[1] +=  self.move * self.move_speed * np.sin(self.zRot)
-        self.pos[2] += -self.move * self.move_speed * np.sin(self.yRot) * np.cos(self.zRot)
-        self.yRot   +=  self.spin * self.rot_speed
+        self.pos[2] += -self.move * self.move_speed * np.sin(self.xRot) * np.cos(self.zRot)
+        self.xRot   +=  self.spin * self.rot_speed
         sg.findNode(self.node,"nave_move").transform = (
             tr.translate(self.pos[0],self.pos[1],self.pos[2])
         )
-        sg.findNode(self.node,"nave_rot").transform = (
-            tr.matmul([tr.rotationY(self.yRot),tr.rotationZ(self.zRot)])
+        sg.findNode(self.node,"nave_shape").transform = (
+            tr.matmul([tr.rotationX(-self.xRot),tr.rotationZ(self.zRot)])
         )
+        for i in range(0,3):
+             sg.findNode(self.node,"nave_shape_"+str(i)).transform = (
+             tr.matmul([tr.rotationX(-self.xRot),tr.rotationZ(self.zRot)])
+             )
+        
 
 
 ventana = Window(width=800, height=600)
@@ -85,35 +121,77 @@ mvpPipeline = sh.SimpleTextureModelViewProjectionShaderProgramOBJ()
 
 navesita = Navesita(mvpPipeline)
 fondo = crearFondo(mvpPipeline)
+obstaculos = sg.SceneGraphNode("obstaculos")
+
+# Creando e instanciando Tuberias
+pipeShape = createGPUShape(mvpPipeline, oh.read_OBJ2(ASSETS["pipe_obj"]))
+pipeShape.texture = sh.textureSimpleSetup(ASSETS["mario_pipe_tex"],*TEX_PARAMS)
+pipeNode = sg.SceneGraphNode("pipe_node")
+pipeNode.childs += [pipeShape]
+
+pipe_list = [0]*5
+for i in range(0,5):
+    pipe_list[i] = sg.SceneGraphNode("pipe_"+str(i))
+    pipe_list[i].childs += [pipeNode]
+    pipe_list[i].transform = tr.matmul([tr.translate(random.randint(1,10)*10,-1,random.choice([2,-2])),tr.rotationZ(np.pi/4)])
+obstaculos.childs += pipe_list
+
+# Creando e instanciando Torretas
+turretShape = createGPUShape(mvpPipeline, oh.read_OBJ2(ASSETS["turret_obj"]))
+turretShape.texture = sh.textureSimpleSetup(ASSETS["navesita_tex"],*TEX_PARAMS)
+turretNode = sg.SceneGraphNode("turret_node")
+turretNode.childs += [turretShape]
+turretNode.transform = tr.matmul([tr.translate(0,-1,3),tr.rotationY(np.pi),tr.uniformScale(0.2)])
+
+turret_list = [0]*5
+for i in range(0,5):
+    turret_list[i] = sg.SceneGraphNode("turret_"+str(i))
+    turret_list[i].childs += [turretNode]
+    turret_list[i].transform = tr.translate(random.randint(1,10)*10,0,random.choice([0,4]))
+obstaculos.childs += turret_list
+
+# Creando e instanciando Anillos
+ringShape = createGPUShape(mvpPipeline, oh.read_OBJ2(ASSETS["ring_obj"]))
+ringShape.texture = sh.textureSimpleSetup(ASSETS["blue_tex"],*TEX_PARAMS)
+ringNode = sg.SceneGraphNode("ring_node")
+ringNode.childs += [ringShape]
+ringNode.transform = tr.matmul([tr.translate(0,2,0),tr.rotationZ(np.pi/2),tr.uniformScale(0.75)])
+
+ring_list = [0]*5
+for i in range(0,5):
+    ring_list[i] = sg.SceneGraphNode("turret_"+str(i))
+    ring_list[i].childs += [ringNode]
+    ring_list[i].transform = tr.translate(random.randint(1,10)*10,0,random.choice([0,4]))
+obstaculos.childs += ring_list
+
+# Definiendo nodo raiz y agregando elementos de la escena
 escena = sg.SceneGraphNode("escena")
-escena.childs += [fondo, navesita.node]
+escena.childs += [fondo, obstaculos, navesita.node]
 
 
-
-
-# Setting up the clear screen color
 glUseProgram(mvpPipeline.shaderProgram)
-
-glClearColor(0.1, 0.1, 0.1, 1.0)
-
+glClearColor(0.051, 0.059, 0.106, 1.0)
 glEnable(GL_DEPTH_TEST)
 
-# What happens when the user presses these keys
+
 @ventana.event
 def on_key_press(symbol, modifiers):
     if symbol == pyglet.window.key.A:
-        navesita.spin = 1
+        navesita.spin =  1
     if symbol == pyglet.window.key.D:
         navesita.spin = -1
     if symbol == pyglet.window.key.W:
-        navesita.move = 1
+        navesita.move =  1
     if symbol == pyglet.window.key.S:
         navesita.move = -1
+    if symbol == pyglet.window.key.PLUS:
+        navesita.move_speed += 0.01
+    if symbol == pyglet.window.key.MINUS:
+        navesita.move_speed -= 0.01    
 
     elif symbol == pyglet.window.key.ESCAPE:
         ventana.close()
 
-# What happens when the user releases these keys
 @ventana.event
 def on_key_release(symbol, modifiers):
     if symbol == pyglet.window.key.A:
@@ -129,6 +207,7 @@ def on_key_release(symbol, modifiers):
 def on_mouse_motion(x,y,dx,dy):
     navesita.zRot = y*np.pi/2*(np.power(1/2,7)) - 5*np.pi/4
 
+
 WIDTH, HEIGHT = 800, 800
 PROJECTIONS = [
     tr.perspective(60, float(WIDTH)/float(HEIGHT), 0.1, 100),  # PERSPECTIVE_PROJECTION
@@ -138,23 +217,19 @@ PROJECTIONS = [
 @ventana.event
 def on_draw():
     ventana.clear()
-
     navesita.update()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-
-    glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "projection"), 1, GL_TRUE, PROJECTIONS[0])
-   
-
     view = tr.lookAt(
-            np.array([navesita.pos[0]-5,5,5]),
-            np.array([navesita.pos[0],0,0]),
-            np.array([0,1,0]) )
+            np.array([navesita.pos[0]-4,10,10]),
+            np.array([navesita.pos[0]+4,0,2]),
+            np.array([0,1,0])
+        )
 
+    glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "projection"), 1, GL_TRUE, PROJECTIONS[1])
     glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
     glUniformMatrix4fv(glGetUniformLocation(mvpPipeline.shaderProgram, "view"), 1, GL_TRUE, view)
-
 
     sg.drawSceneGraphNode(escena, mvpPipeline, "model")
 
